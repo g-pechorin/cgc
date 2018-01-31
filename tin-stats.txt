@@ -1,0 +1,7 @@
+44342 = 14 tireations
+36
+44306 = 314 iterations @ 26s
+46
+44296 = 1983 iterations @ 2m34s
+58
+44284 = 13000 iterations @ 15m53s

@@ -1,0 +1,7 @@
+rootProject.name = 'c-gradle-code'
+
+include ':smol-grammar'
+
+include ':dynamic-cmake'
+include ':tin-flue'
+include ':cgc-core'

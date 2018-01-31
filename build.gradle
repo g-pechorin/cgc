@@ -1,0 +1,55 @@
+
+buildscript {
+	apply from: '../pal-gradle/version.gradle'
+}
+
+allprojects {
+	apply from: rootProject.file('../pal-gradle/version.gradle')
+	apply from: rootProject.file('../pal-gradle/scala.gradle')
+
+	apply plugin: 'groovy'
+
+	dependencies {
+		if ("cgc-core" != name)
+			compile project(':cgc-core')
+	}
+}
+
+project(':dynamic-cmake') {
+	sourceSets {
+		test {
+			resources.srcDirs += [
+				rootProject.file('cgc-core/src/test/resources')
+			]
+		}
+	}
+}
+project(':tin-flue') {
+	dependencies {
+		compile 'com.github.luccappellaro:jzopfli:0.0.4'
+	}
+}
+
+project(':smol-grammar') {
+	apply plugin: 'antlr'
+	apply from: rootProject.file('../pal-gradle/antlr.gradle')
+	generateGrammarSource.arguments = [
+		'-no-listener',
+		'-no-visitor',
+		'-package', 'peterlavalle.smol'
+	]
+	
+	dependencies {
+		testCompile "com.peterlavalle:gbt-itest:${pal.peterVersion}"
+	}
+}
+
+dependencies {
+	compileOnly gradleApi()
+	compile "com.peterlavalle:gbt:${pal.peterVersion}"
+	testCompile "com.peterlavalle:gbt-itest:${pal.peterVersion}"
+
+	compile project(':tin-flue')
+	compile project(':smol-grammar')
+	compile project(':dynamic-cmake')
+}
