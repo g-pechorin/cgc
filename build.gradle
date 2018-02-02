@@ -38,10 +38,6 @@ project(':smol-grammar') {
 		'-no-visitor',
 		'-package', 'peterlavalle.smol'
 	]
-	
-	dependencies {
-		testCompile "com.peterlavalle:gbt-itest:${pal.peterVersion}"
-	}
 }
 
 dependencies {
