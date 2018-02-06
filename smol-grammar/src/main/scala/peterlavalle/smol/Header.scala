@@ -3,10 +3,13 @@ package peterlavalle.smol
 import java.io.{StringWriter, Writer}
 
 import peterlavalle.TS
+import peterlavalle.smol.SmolIr.TCall
 
 // TODO ; remove the implicit
 class Header(m: SmolIr.Module) {
 	implicit val module: SmolIr.Module = m
+
+	import Examine._
 
 	val examine: Examine = new Examine(module)
 
@@ -49,32 +52,51 @@ class Header(m: SmolIr.Module) {
 			}
 
 			.appendSection("// class types\n", examine.allClasses) {
-
-				case typeDef: SmolIr.TypeDef =>
+				typeDef: SmolIr.TypeDef =>
 					val SmolIr.TypeDef(name, base, value, members) = typeDef
 
 					def initValue: String =
 						if (null != value)
-							" = " + value.text.drop(2).dropRight(2)
+							" = (" + value.text.drop(2).dropRight(2) + ')'
 						else
 							""
 
 					new StringWriter()
 						.appund {
-							s"""
-								 |struct ${name.text}
-								 |{
-								 |	${Cpp.textForKind(base)} _this;
-								 |	inline ${name.text}(${Cpp.textForKind(base)} _$initValue) : _this(_) {}
-								 |	inline operator ${Cpp.textForKind(base)}(void) const { return _this; }
-								 |
-							 """.stripMargin.trim.reIndent(1) + '\n'
+							if (typeDef.isHard) {
+								s"""
+									 |class ${name.text} final // hard
+									 |{
+									 |	${Cpp.textForKind(base)} _this;
+									 |	${name.text}(${Cpp.textForKind(base)});
+									 |public:
+									 |	${name.text}(void);
+									 |	${name.text}(const ${name.text}&) = delete;
+									 |	${name.text}& operator=(const ${name.text}&) = delete;
+									 |	${name.text}(${name.text}&&);
+									 |	void operator=(${name.text}&&);
+									 |
+							 	""".stripMargin.trim.reIndent(1) + '\n' + '\n'
+							} else {
+								//TODO; de-inline
+								s"""
+									 |struct ${name.text} final
+									 |{
+									 |	${Cpp.textForKind(base)} _this;
+									 |	inline ${name.text}(${Cpp.textForKind(base)} _$initValue) : _this(_) {}
+									 |	inline operator ${Cpp.textForKind(base)}(void) const { return _this; }
+									 |
+							 	""".stripMargin.trim.reIndent(1) + '\n'
+							}
 						}
 						.appund(members) {
 							case SmolIr.TypeDef.Constructor(code, args) =>
-								s"\t\t${name.text}(${Header.argsToString(args)}); // ${code.text}\n"
-							case SmolIr.TypeDef.Destructor(code) =>
-								s"\t\tvoid _${name.text}(void); // ${code.text}\n"
+								s"\t\tstatic ${name.text} ${code.text}(${Header.argsToString(args.filter(_.isInstanceOf[SmolIr.TCall.Arg]))});\n"
+
+							case SmolIr.TypeDef.Destructor(code, args) =>
+								require(args.filterTo[SmolIr.TCall.Arg].isEmpty)
+								require(typeDef.isHard)
+								s"\t\t~${name.text}(void); // ${code.text}\n"
 
 							case SmolIr.TypeDef.Method(code, _, args, kind) =>
 								s"\t\t${Cpp.textForKind(kind)} ${code.text}(${
@@ -128,37 +150,26 @@ object Header {
 				names.map((_: TS.Tok).text).reduce((_: String) + "," + (_: String))
 		}
 
-	@deprecated
 	def argsToString(args: SmolIr.TCall.Args)(implicit module: SmolIr.Module): String =
-		args.filterNot(_.isInstanceOf[SmolIr.TCall.Value]) match {
+		args.filterNot((_: TCall.TArg).isInstanceOf[SmolIr.TCall.Value]) match {
 			case Nil => "void"
 			case list =>
-				list.filterNot(_.isInstanceOf[SmolIr.TCall.Value]).map {
+				list.filterNot((_: TCall.TArg).isInstanceOf[SmolIr.TCall.Value]).map {
 					case (SmolIr.TCall.ThisArg) =>
-
-						"shoul.d have been handled higher" halt
-
+						sys.error(
+							"trying to convert a `this` to an arg; should have been handled higher"
+						)
 					case (arg: SmolIr.TCall.Arg) => Header.nameAndKind(arg)
 				}.reduce((_: String) + ", " + (_: String))
 		}
 
-	def nameAndKind(arg: SmolIr.TCall.Arg)(implicit module: SmolIr.Module): String =
+	def nameAndKind(arg: SmolIr.TCall.Arg)(implicit module: SmolIr.Module): String = {
+		import Examine._
 		arg match {
-			case SmolIr.TCall.Arg(name, kind) => Cpp.textForKind(kind) + ' ' + name.text
+			case SmolIr.TCall.Arg(name, hard: SmolIr.TypeDef) if hard.isHard =>
+				Cpp.textForKind(hard.Const.Ref) + ' ' + name.text
+			case SmolIr.TCall.Arg(name, kind) =>
+				Cpp.textForKind(kind) + ' ' + name.text
 		}
-
-	def argsToArguments(args: SmolIr.TCall.Args)(implicit module: SmolIr.Module): String =
-		args.filterNot(_.isInstanceOf[SmolIr.TCall.Value]) match {
-			case Nil => "void"
-			case list =>
-				list.map {
-					case (arg: SmolIr.TCall.Arg) => Header.justKind(arg) + ' ' + arg.name.text
-				}.reduce((_: String) + ", " + (_: String))
-		}
-
-	def justKind(arg: SmolIr.TCall.Arg)(implicit module: SmolIr.Module): String =
-		arg match {
-			case SmolIr.TCall.Arg(_, kind) => Cpp.textForKind(kind)
-		}
-
+	}
 }

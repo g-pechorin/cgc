@@ -33,8 +33,8 @@ trait TTestCase extends peterlavalle.ATestCase {
 	}
 
 	def testAllCallable(): Unit = {
-		val actual: List[SmolIr.TCall] = new Examine(treeCode).allCallable.toList
-		val expected: List[SmolIr.TCall] = expandedCalls
+		val actual: List[SmolIr.TCall] = new Examine(treeCode).allCallable.toList.sortBy((_: SmolIr.TCall).name.text)
+		val expected: List[SmolIr.TCall] = expandedCalls.sortBy((_: SmolIr.TCall).name.text)
 		sAssertEqual(
 			"contents are different",
 			expected.sortBy(_.name.text),
@@ -126,36 +126,23 @@ trait TTestCase extends peterlavalle.ATestCase {
 		)
 	}
 
-	def testNameText(): Unit = {
+	def testNames(): Unit = {
 
-		val actual =
-			new Labels(new ByteArrayOutputStream()).strings(treeCode)
-
-		val expected =
-			labels
-
-		assertEquals(
-			expected,
-			actual.toList
+		sAssertEqual(
+			s"name-strings don't match in $getName",
+			labels,
+			new Labels(new ByteArrayOutputStream())
+				.strings(treeCode)
 		)
-	}
-
-	def testNameBytes(): Unit = {
-
-		val actual: Array[Byte] =
-			new Labels(new ByteArrayOutputStream())(treeCode)
-				.toByteArray
-
-		val expected: Array[Byte] =
-			labels
-				.flatMap {
-					name: String =>
-						name.getBytes ++ Array[Byte](0)
-				}.toArray
 
 		assertEquals(
-			expected.toList,
-			actual.toList
+			s"name-bytes don't match in $getName",
+			labels.flatMap {
+				name: String =>
+					name.getBytes ++ Array[Byte](0)
+			}.toArray.toList,
+			new Labels(new ByteArrayOutputStream())(treeCode)
+				.toByteArray.toList
 		)
 	}
 }

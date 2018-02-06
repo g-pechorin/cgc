@@ -149,15 +149,28 @@ object Compiler {
 								node,
 								compileArgs(
 									context.nest(node.text), constructor.args()
-								).map { case arg: SmolIr.TCall.Arg => arg }
+								).map {
+									case arg: SmolIr.TCall.Arg => arg
+									case arg: SmolIr.TCall.Value => arg
+									case SmolIr.TCall.ThisArg => SmolIr.TCall.ThisArg
+								}
 							)
 						case destructor: SmolIrParser.DestructorContext =>
-							sys.error(
-								"I want hard-classes before allowing destructors"
-							)
+							val node: TS.Tok = destructor.Name()
 							SmolIr.TypeDef.Destructor(
-								destructor.Name()
+								node,
+								compileArgs(
+									context.nest(node.text), destructor.args()
+								).map {
+									case arg: SmolIr.TCall.Arg =>
+										sys.error(
+											"args don't work here"
+										)
+									case arg: SmolIr.TCall.Value => arg
+									case SmolIr.TCall.ThisArg => SmolIr.TCall.ThisArg
+								}
 							)
+
 						case method: SmolIrParser.MethodContext =>
 							val (mCode: TS.Tok, mName: TS.Tok) =
 								pairForCodeContext(
@@ -187,16 +200,43 @@ object Compiler {
 							)
 					}
 
+				val typeDef =
 
-				SmolIr.TypeDef(
-					typeName,
-					compileKind(context.nest(typeName), aliasContext.kin().kind()),
-					if (null != aliasContext.HereSource())
-						aliasContext.HereSource()
-					else
-						null,
-					aliasContext.member().toList.map(compile)
-				)
+					SmolIr.TypeDef(
+						typeName,
+						compileKind(context.nest(typeName), aliasContext.kin().kind()),
+						if (null != aliasContext.HereSource())
+							aliasContext.HereSource()
+						else
+							null,
+						aliasContext.member().toList.map(compile)
+					)
+				import Examine._
+
+				aliasContext.whinge().getText match {
+					case "auto" | "type" =>
+						typeDef
+
+					case "hard" =>
+						require(
+							typeDef.isHard,
+							s"I needed ${typeName.text} to be hard"
+						)
+						typeDef
+
+					case "soft" =>
+						require(
+							!(typeDef.isHard),
+							s"I needed ${typeName.text} to be soft"
+						)
+						typeDef
+
+					case "firm" =>
+						sys.error(
+							"firm types (hard but unchecked) aren't yet supported"
+						)
+				}
+
 
 			case prototype: SmolIrParser.Prototype_contentContext =>
 				val (mCode: TS.Tok, mName: TS.Tok) =

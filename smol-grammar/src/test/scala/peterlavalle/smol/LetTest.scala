@@ -116,19 +116,19 @@ class LetTest extends TTestCase {
 				|		SOFT = 0x1,
 				|	};
 				|// class types
-				|	struct shader
+				|	struct shader final
 				|	{
 				|		uint8_t _this;
 				|		inline shader(uint8_t _) : _this(_) {}
 				|		inline operator uint8_t(void) const { return _this; }
 				|	};
-				|	struct program
+				|	struct program final
 				|	{
 				|		uint32_t _this;
 				|		inline program(uint32_t _) : _this(_) {}
 				|		inline operator uint32_t(void) const { return _this; }
-				|		program(void); // CreateProgram
-				|		program(uint16_t arg0); // ImportProgram
+				|		static program CreateProgram(void);
+				|		static program ImportProgram(uint16_t arg0);
 				|		void nope(uint8_t a);
 				|		void gone(uint8_t a);
 				|		void DeleteProgram(void);

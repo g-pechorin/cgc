@@ -120,10 +120,10 @@ class ParameterThisTest extends TTestCase {
 				|		ELEMENT = 0x8893,
 				|	};
 				|// class types
-				|	struct buffer
+				|	struct buffer final
 				|	{
 				|		uint32_t _this;
-				|		inline buffer(uint32_t _ = 0) : _this(_) {}
+				|		inline buffer(uint32_t _ = (0)) : _this(_) {}
 				|		inline operator uint32_t(void) const { return _this; }
 				|		void NamedBufferDataEXT(uint32_t data_size, void* data_data, test::usages arg2);
 				|		void BindBuffer(test::target arg0, test::usages arg2);

@@ -58,16 +58,16 @@ class TypeTest extends TTestCase {
 				|struct foo
 				|{
 				|// class types
-				|	struct alias
+				|	struct alias final
 				|	{
 				|		uint32_t _this;
 				|		inline alias(uint32_t _) : _this(_) {}
 				|		inline operator uint32_t(void) const { return _this; }
 				|	};
-				|	struct another
+				|	struct another final
 				|	{
 				|		double _this;
-				|		inline another(double _ = 3.14f) : _this(_) {}
+				|		inline another(double _ = (3.14f)) : _this(_) {}
 				|		inline operator double(void) const { return _this; }
 				|	};
 				|// calls

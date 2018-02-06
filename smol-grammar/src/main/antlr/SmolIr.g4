@@ -9,15 +9,17 @@ EnumFlag : 'enum' | 'flag';
 content
 	: EnumFlag Name ':' AtomicWhole with* '{' enumerant* '}' #enumerant_content // TODO; this is a wee bit redundant with type aliases and the in-place enum
 	| 'def' code prototype #prototype_content
-	| 'type' Name kin ('=' HereSource)? ('{' member+ '}')? #alias
+	| whinge Name kin ('=' HereSource)? ('{' member+ '}')? #alias
 	;
+
+whinge : 'type' | 'hard' | 'soft' | 'firm' | 'auto';
 
 with : 'with' Name;
 
 member
 	: 'def' code prototype #method
 	| 'new' Name '(' (args (',' args)*)? ')' #constructor
-	| 'del' Name #destructor
+	| 'del' Name ('(' (args (',' args)*)? ')')? #destructor
 	;
 
 code
@@ -69,4 +71,4 @@ Name : ([a-z]|[A-Z]) WChar*;
 
 fragment WChar : [a-z]|[A-Z]|[0-9]|'_';
 
-WS : ((('//'|'#') (~'\n')*)|([, \r\n\t])) -> skip ;
+WS : ((('//'|'#'|';') (~'\n')*)|([, \r\n\t])) -> skip ;

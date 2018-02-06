@@ -43,7 +43,6 @@ project(':smol-grammar') {
 dependencies {
 	compileOnly gradleApi()
 	compile "com.peterlavalle:gbt:${pal.peterVersion}"
-	testCompile "com.peterlavalle:gbt-itest:${pal.peterVersion}"
 
 	compile project(':tin-flue')
 	compile project(':smol-grammar')

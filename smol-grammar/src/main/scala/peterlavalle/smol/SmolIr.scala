@@ -186,14 +186,18 @@ object SmolIr {
 		case class Constructor
 		(
 			name: TS.Tok,
-			args: List[TCall.Arg]
+			args: TCall.Args
 		) extends TMember
 
 		case class Destructor
 		(
-			name: TS.Tok
+			name: TS.Tok,
+			args: TCall.Args = Nil
 		) extends TMember {
-			override val args: List[TCall.Arg] = Nil
+			args.foreach {
+				arg: TCall.TArg =>
+					require(!arg.isInstanceOf[TCall.Arg])
+			}
 		}
 
 		case class Method

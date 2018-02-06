@@ -11,7 +11,7 @@ class Examine(module: SmolIr.Module) {
 			case kind: SmolIr.TypeDef =>
 				List(kind)
 			case _: SmolIr.Prototype |
-					 _: SmolIr.EnumKind =>
+			     _: SmolIr.EnumKind =>
 				// the present system doesn't allow inlaid classes
 				Nil
 		}
@@ -53,7 +53,11 @@ class Examine(module: SmolIr.Module) {
 
 				typeDef.members.flatMap {
 					case SmolIr.TypeDef.Constructor(_, args) =>
-						args.map((_: SmolIr.TCall.Arg).kind)
+						args.map {
+							case arg: SmolIr.TCall.TKArg =>
+								arg.kind
+							case SmolIr.TCall.ThisArg => SmolIr.TCall.ThisArg
+						}
 
 					case _: SmolIr.TypeDef.Destructor =>
 						// destructors can't have args
@@ -68,4 +72,16 @@ class Examine(module: SmolIr.Module) {
 				}.filterTo[SmolIr.EnumKind]
 		}.distinct
 	}
+}
+
+object Examine {
+
+	implicit class TExamineTypeDef(typeDef: TypeDef) {
+		def isHard: Boolean = {
+			typeDef.members.filterTo[SmolIr.TypeDef.Destructor].nonEmpty
+		}
+
+		require(null != typeDef.value || !isHard)
+	}
+
 }

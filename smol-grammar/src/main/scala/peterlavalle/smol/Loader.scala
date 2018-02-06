@@ -13,7 +13,7 @@ class Loader(m: SmolIr.Module) {
 	val prefixName: String = module.prefix.text
 
 	def apply[W <: Writer](writer: W): W = {
-
+		import Examine._
 		writer
 			.appund {
 				"\n#include \"" + moduleName + ".hpp\"\n\n"
@@ -45,9 +45,53 @@ class Loader(m: SmolIr.Module) {
 					 |
 					""".stripTrim
 			}
-			.appund(examine.allCallableGroups.toList.sortBy((_: (String, Iterable[SmolIr.TCall]))._1).flatMap { case (g, d) => g :: d.toList.sortBy((_: SmolIr.TCall).name.text) }.filter("" != (_: Object))) {
+			.appund(examine.allCallableGroups.toList.sortBy((_: (String, Iterable[SmolIr.TCall]))._1)
+				// repack the stream to include the group name and the object type
+				.flatMap {
+				case (g, d) =>
+					val calls = d.toList.sortBy((_: TCall).name.text)
+					d match {
+
+						case SmolIr.Member(self, _) :: _ =>
+							g :: self :: calls
+
+						case _ =>
+							g :: calls
+					}
+			}.filter("" != (_: Object))) {
+
 				case group: String =>
 					s"\n\n//\n// $group\n"
+
+				case hard: SmolIr.TypeDef if hard.isHard =>
+					val name = hard.name.text
+					val kind = moduleName + "::" + name
+					val base = {
+						hard.value.text.drop(2).dropRight(2)
+					}
+					s"""
+						 |$kind::$name(${Cpp.textForKind(hard.base)} _) :
+						 |	_this(_)
+						 |{}
+						 |$kind::$name(void) :
+						 |	_this($base)
+						 |{}
+						 |$kind::$name($kind&& them) :
+						 |	_this(them._this)
+						 |{
+						 |	them._this = $base;
+						 |}
+						 |void $kind::operator=($kind&& them)
+						 |{
+						 |	this->~$name();
+						 |	_this = them._this;
+						 |	them._this = $base;
+						 |}
+					""".stripMargin.trim + '\n'
+
+				case soft: SmolIr.TypeDef =>
+					assume(!soft.isHard)
+					""
 
 				case callable: SmolIr.TCall =>
 					callable match {
@@ -64,7 +108,7 @@ class Loader(m: SmolIr.Module) {
 								result(kind)
 
 							val head: String =
-								s"${Cpp.textForKind(kind)} $moduleName::${code.text}(${Header.argsToArguments(args)})"
+								s"${Cpp.textForKind(kind)} $moduleName::${code.text}(${Header.argsToString(args)})"
 
 							emitCallable(
 								callable,
@@ -72,20 +116,45 @@ class Loader(m: SmolIr.Module) {
 								pre, call, end
 							)
 
-						case SmolIr.Member(typeDef: SmolIr.TypeDef, SmolIr.TypeDef.Constructor(name: TS.Tok, args: List[SmolIr.TCall.Arg])) =>
+						case SmolIr.Member(typeDef: SmolIr.TypeDef, SmolIr.TypeDef.Constructor(name: TS.Tok, args: SmolIr.TCall.Args)) =>
+							import Examine._
+							val hasThis =
+								args.contains(SmolIr.TCall.ThisArg)
+
 							val call: String =
-								reinterpretFunctionPointer(
-									name,
-									"", SmolIr.KVoid,
-									args,
-									typeDef.base
-								)
+								if (hasThis)
+									reinterpretFunctionPointer(
+										name,
+										"&(_this._this)", typeDef.base.Ptr,
+										args, SmolIr.KVoid
+									)
+								else
+									reinterpretFunctionPointer(
+										name,
+										"", SmolIr.KVoid,
+										args,
+										typeDef.base
+									)
+
+							def out = {
+								assume(typeDef.isHard)
+								s"${Cpp.textForKind(typeDef)} _this;\n\t"
+							}
 
 							val (pre: String, end: String) =
-								("_this = ", "")
+								if (hasThis) {
+									assume(typeDef.isHard)
+									(out, ";\n\treturn _this")
+								} else if (typeDef.isHard)
+									(out + "_this._this = ", ";\n\treturn _this")
+								else
+									("_this = ", "")
 
 							val head: String =
-								s"$moduleName::${typeDef.name.text}::${typeDef.name.text}(${Header.argsToArguments(args)})"
+								if (typeDef.isHard)
+									s"${Cpp.textForKind(typeDef)} ${Cpp.textForKind(typeDef)}::${name.text}(${Header.argsToString(args.filterTo[SmolIr.TCall.Arg])})"
+								else
+									s"${Cpp.textForKind(typeDef)}::${typeDef.name.text}(${Header.argsToString(args.filterTo[SmolIr.TCall.Arg])})"
 
 							emitCallable(
 								callable,
@@ -106,30 +175,46 @@ class Loader(m: SmolIr.Module) {
 								result(kind)
 
 							val head: String =
-								s"${Cpp.textForKind(kind)} $moduleName::${typeDef.name.text}::${code.text}(${Header.argsToArguments(args.filterNot(SmolIr.TCall.ThisArg == _))})"
+								s"${Cpp.textForKind(kind)} $moduleName::${typeDef.name.text}::${code.text}(${Header.argsToString(args.filterNot(SmolIr.TCall.ThisArg == _))})"
 
 							emitCallable(
 								callable,
 								head,
-								pre, call, end
+								if (typeDef.isHard)
+									s"${typeDef.hardCheck("_this").trim}\n\t$pre"
+								else
+									pre, call, end
 							)
 
-						case SmolIr.Member(typeDef: SmolIr.TypeDef, SmolIr.TypeDef.Destructor(name: TS.Tok)) =>
+						case SmolIr.Member(typeDef: SmolIr.TypeDef, SmolIr.TypeDef.Destructor(name: TS.Tok, args)) =>
 							val call: String =
-								reinterpretFunctionPointer(
-									name,
-									"_this", typeDef.base,
-									Nil,
-									SmolIr.KVoid
-								)
+								if (args.contains(SmolIr.TCall.ThisArg))
+									reinterpretFunctionPointer(
+										name,
+										"&(_this)", typeDef.base.Ptr,
+										args,
+										SmolIr.KVoid
+									)
+								else {
+									assume(args.isEmpty)
+									reinterpretFunctionPointer(
+										name,
+										"_this", typeDef.base,
+										if (args.isEmpty)
+											List(SmolIr.TCall.ThisArg)
+										else
+											args,
+
+										SmolIr.KVoid
+									)
+								}
 
 							val (pre: String, end: String) =
-								("", "")
-
+								(s"if (_this == (${typeDef.value.text.drop(2).dropRight(2)}))\n\t\treturn;\n\t", "")
 
 							emitCallable(
 								callable,
-								s"void $moduleName::${typeDef.name.text}::_${typeDef.name.text}(void)",
+								s"$moduleName::${typeDef.name.text}::~${typeDef.name.text}(void)",
 								pre, call, end
 							)
 
@@ -161,12 +246,16 @@ class Loader(m: SmolIr.Module) {
 			args
 
 		val castKind: String = {
+			import Examine._
 			val castArgs: String =
 				if (fullArgs.nonEmpty)
 					fullArgs.map {
 						case SmolIr.TCall.ThisArg =>
 							selfKind
-						case (arg: TCall.TKArg) => arg.kind
+						case SmolIr.TCall.Arg(_: TS.Tok, hard: SmolIr.TypeDef) if hard.isHard =>
+							hard.base
+						case (arg: SmolIr.TCall.TKArg) =>
+							arg.kind
 					}.map(Cpp.textForKind).reduce((_: String) + ", " + (_: String))
 				else
 					"void"
@@ -183,8 +272,16 @@ class Loader(m: SmolIr.Module) {
 		val callArgs: String =
 			if (fullArgs.nonEmpty)
 				fullArgs.map {
-					case (arg: SmolIr.TCall.Arg) => arg.name.text
-					case SmolIr.TCall.ThisArg => "_this"
+					case SmolIr.TCall.Arg(param, kind) =>
+						import Examine._
+						kind match {
+							case hard: SmolIr.TypeDef if hard.isHard =>
+								s"reinterpret_cast<${Cpp.textForKind(hard.base.Const.Ref)}>(${param.text})"
+							case _ =>
+								param.text
+						}
+
+					case SmolIr.TCall.ThisArg => selfData.text
 					case value: SmolIr.TCall.Value => value.hex.text
 				}.reduce((_: String) + ", " + (_: String))
 			else
@@ -206,7 +303,7 @@ class Loader(m: SmolIr.Module) {
 
 				s"""
 					 |$head
-					 |{${emitEnumArgChecks(callable.args)}
+					 |{${emitArgChecks(callable.args)}
 					 |	auto _out = $call;$tail
 					 |	return _out;
 					 |}
@@ -215,18 +312,27 @@ class Loader(m: SmolIr.Module) {
 			case _ =>
 				s"""
 					 |$head
-					 |{${emitEnumArgChecks(callable.args)}
+					 |{${emitArgChecks(callable.args)}
 					 |	$pre$call$end;
 					 |}
 				""".stripMargin.trim + '\n'
 		}
 
-	def emitEnumArgChecks(args: SmolIr.TCall.Args): String =
-		args.filterTo[TCall.Arg].filter((_: TCall.Arg).kind.isInstanceOf[SmolIr.EnumKind]) match {
+	def emitArgChecks(args: SmolIr.TCall.Args): String =
+		args.filterTo[SmolIr.TCall.Arg].filter {
+			arg: SmolIr.TCall.Arg =>
+				import Examine._
+				(arg.kind.isInstanceOf[SmolIr.TypeDef] && arg.kind.asInstanceOf[SmolIr.TypeDef].isHard) || arg.kind.isInstanceOf[SmolIr.EnumKind]
+		} match {
 			case Nil => ""
-			case enumArgs: List[TCall.Arg] =>
+			case enumArgs: List[SmolIr.TCall.Arg] =>
 				enumArgs
 					.map {
+						case SmolIr.TCall.Arg(name: TS.Tok, hard: SmolIr.TypeDef) =>
+							hard.hardCheck(
+								s"reinterpret_cast<const ${Cpp.textForKind(hard.base)}&>(${name.text})"
+							)
+
 						case SmolIr.TCall.Arg(name: TS.Tok, enum: SmolIr.EnumKind) =>
 							Cpp.emitAssertEnumOrFlag(
 								moduleName,
@@ -235,6 +341,16 @@ class Loader(m: SmolIr.Module) {
 							)
 					}.reduce((_: String) + (_: String))
 		}
+
+	implicit class WrapForHardCheck(hard: SmolIr.TypeDef) {
+
+		import Examine._
+
+		assume(hard.isHard)
+
+		def hardCheck(read: String): String =
+			s"\n\tassert((${hard.value.text.drop(2).dropRight(2)}) != $read);"
+	}
 
 }
 
