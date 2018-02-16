@@ -82,9 +82,12 @@ class ListsTask extends TProperTask.TTaskSingle(
 							""".stripMargin.trim + '\n'
 					)
 
-			dCMake
-				.emit(cmakeLists)
+			if ((getProject.getProjectDir / "CMakeLists.port").exists())
+				cmakeLists.append("\n\ninclude(\"CMakeLists.port\")\n")
+			else
+				dCMake.emit(cmakeLists)
 
+			cmakeLists
 				.appund {
 					//
 					// add the magic for minimising the .exe
