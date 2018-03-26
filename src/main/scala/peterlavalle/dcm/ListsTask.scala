@@ -3,7 +3,6 @@ package peterlavalle.dcm
 import java.io.File
 
 import org.gradle.api.Project
-import peterlavalle.cgc.Generate
 import peterlavalle.gbt.TProperTask
 import peterlavalle.gbt.TProperTask.Phase
 import peterlavalle.{Later, OverWriter}
@@ -13,13 +12,6 @@ class ListsTask extends TProperTask.TTaskSingle(
 	"generates/updates any/all CMakeLists.txt files"
 ) {
 
-	connect {
-		// we want the C/++ stuffs donzies
-		getProject.getTasks.filterTo[Generate].foreach {
-			task: Generate =>
-				dependsOn(task)
-		}
-	}
 	val dynamics: Later[List[ModuleTask]] = consumePhased[ModuleTask]
 
 	val cmakeLists: Later[File] =

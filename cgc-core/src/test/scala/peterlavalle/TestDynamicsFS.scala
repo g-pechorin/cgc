@@ -14,6 +14,11 @@ class TestDynamicsFS extends ATestCase {
 			(fs *) sorted
 		)
 
+	def fs: DynamicsFS =
+		DynamicsFS.fromZipStream(
+			ClassLoader.getSystemResourceAsStream("cm.pal.zip")
+		)
+
 	def testSub(): Unit =
 		assertEquals(
 			Stream(
@@ -23,11 +28,6 @@ class TestDynamicsFS extends ATestCase {
 				"src/main/cgc/pal.hpp"
 			).sorted,
 			(fs / "cm.pal" *) sorted
-		)
-
-	def fs: DynamicsFS =
-		DynamicsFS.fromZipStream(
-			ClassLoader.getSystemResourceAsStream("cm.pal.zip")
 		)
 
 }

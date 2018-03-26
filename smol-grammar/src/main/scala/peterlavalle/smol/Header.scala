@@ -150,17 +150,24 @@ object Header {
 				names.map((_: TS.Tok).text).reduce((_: String) + "," + (_: String))
 		}
 
-	def argsToString(args: SmolIr.TCall.Args)(implicit module: SmolIr.Module): String =
-		args.filterNot((_: TCall.TArg).isInstanceOf[SmolIr.TCall.Value]) match {
-			case Nil => "void"
-			case list =>
-				list.filterNot((_: TCall.TArg).isInstanceOf[SmolIr.TCall.Value]).map {
-					case (SmolIr.TCall.ThisArg) =>
-						sys.error(
-							"trying to convert a `this` to an arg; should have been handled higher"
-						)
-					case (arg: SmolIr.TCall.Arg) => Header.nameAndKind(arg)
-				}.reduce((_: String) + ", " + (_: String))
+	def argsToString(what: Iterable[SmolIr.TCall.TArg])(implicit module: SmolIr.Module): String =
+		what match {
+			case args: SmolIr.TCall.Args =>
+				args.filterNot((_: TCall.TArg).isInstanceOf[SmolIr.TCall.Value]) match {
+					case Nil => "void"
+					case list =>
+						list.filterNot((_: TCall.TArg).isInstanceOf[SmolIr.TCall.Value]).map {
+							case (SmolIr.TCall.ThisArg) =>
+								sys.error(
+									"trying to convert a `this` to an arg; should have been handled higher"
+								)
+							case (arg: SmolIr.TCall.Arg) => Header.nameAndKind(arg)
+						}.reduce((_: String) + ", " + (_: String))
+				}
+
+			case _ =>
+				argsToString(what.toList)
+
 		}
 
 	def nameAndKind(arg: SmolIr.TCall.Arg)(implicit module: SmolIr.Module): String = {

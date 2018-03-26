@@ -4,7 +4,6 @@ import java.io.{File, FileInputStream, FileOutputStream}
 
 import org.antlr.v4.runtime.{ANTLRInputStream, CommonTokenStream, RecognitionException}
 import org.gradle.api.GradleException
-import peterlavalle.cgc.Generate
 import peterlavalle.gbt.TProperTask
 import peterlavalle.{Later, OverWriter}
 
@@ -13,12 +12,6 @@ class SmolLdrTask extends TProperTask.TTaskPhased(
 	"build setup",
 	"builds a list of stuff to make smol-loaders from"
 ) {
-	connect {
-		// we're going to generate C/++ headers
-
-		findPhasedTask[Generate].dependsOn(this)
-	}
-
 	// cool - we need to compile all of the things!
 	val modules: Later[Iterable[(String, SmolIr.Module)]] =
 		consume("smol") {

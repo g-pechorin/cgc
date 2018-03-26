@@ -4,12 +4,13 @@ import javax.inject.Inject
 
 import org.gradle.api.internal.file.SourceDirectorySetFactory
 import org.gradle.api.plugins.JavaPlugin
-import peterlavalle.gbt.APlugin
+import peterlavalle.gbt.{APlugin, MContent}
 
 class ThePlugin @Inject()
 (
 	sourceDirectorySetFactory: SourceDirectorySetFactory
-) extends APlugin(sourceDirectorySetFactory) {
+) extends APlugin(sourceDirectorySetFactory)
+	with MContent.MPlugin {
 
 	plugin[JavaPlugin]
 
@@ -26,10 +27,4 @@ class ThePlugin @Inject()
 		"**/**.c"
 
 	)
-
-	configure {
-		// create the generate tasks for cgc
-		// since both the GCC and CMake paths exist - need some explicit task/point to chain other plugins off of
-		project.install[Generate]
-	}
 }

@@ -4,7 +4,7 @@ import java.io.{File, InputStream}
 
 import org.gradle.api.artifacts.{Dependency, ProjectDependency}
 import peterlavalle.gbt.TProperTask
-import peterlavalle.{DynamicsFS, Later, cgc}
+import peterlavalle.{DynamicsFS, Later}
 
 import scala.beans.BeanProperty
 
@@ -12,11 +12,6 @@ class ModuleTask extends TProperTask.TTaskPhased(
 	"build setup",
 	"collects lists of source code files for either the test or main"
 ) {
-	connect {
-		dependsOn(
-			findPhasedTask[cgc.Generate]
-		)
-	}
 
 	lazy val lib: List[DCMake.Module] =
 		depsImediate {

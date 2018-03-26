@@ -23,12 +23,6 @@ class Examine(module: SmolIr.Module) {
 			case member: SmolIr.Member => member.self.name.text
 		}
 
-	def distinctCallableGroups: Iterable[(String, Iterable[SmolIr.TCall])] =
-		allCallable.distinctBy(_.name.text).clusterBy {
-			case _: SmolIr.Prototype => ""
-			case member: SmolIr.Member => member.self.name.text
-		}
-
 	def allCallable: Iterable[SmolIr.TCall] = {
 		module.contents.toStream.flatMap {
 			case prototype: SmolIr.Prototype =>
@@ -42,6 +36,12 @@ class Examine(module: SmolIr.Module) {
 				Nil
 		}
 	}
+
+	def distinctCallableGroups: Iterable[(String, Iterable[SmolIr.TCall])] =
+		allCallable.distinctBy(_.name.text).clusterBy {
+			case _: SmolIr.Prototype => ""
+			case member: SmolIr.Member => member.self.name.text
+		}
 
 	def allEnums: Iterable[SmolIr.EnumKind] = {
 		module.contents.toStream.flatMap {

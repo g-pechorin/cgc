@@ -15,13 +15,7 @@ class TinHeaderTask extends TProperTask.TTaskPhased(
 	val blobs: Later[List[TinCompressTask]] =
 		consume[TinCompressTask]
 
-	connect {
-		dependsOn(
-			findPhasedTask[TinCompressTask]
-		)
-
-		findPhasedTask[peterlavalle.cgc.Generate].dependsOn(this)
-	}
+	dependsOn[TinCompressTask]
 
 	val header: Later[File] =
 		produce("cgc") {

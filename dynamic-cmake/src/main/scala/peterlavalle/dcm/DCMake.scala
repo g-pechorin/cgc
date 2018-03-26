@@ -8,10 +8,10 @@ import peterlavalle.{DynamicsFS, OverWriter}
 	* another attempt to wrap CMake, this time using interfaces and proxies to allow obsessive testing before actually using it
 	*/
 class DCMake(
-							val name: String, val home: File,
-							mainSrc: DynamicsFS, mainLib: Iterable[DCMake.Module], mainInc: Iterable[File], val mainOut: Boolean,
-							testSrc: DynamicsFS, testLib: Iterable[DCMake.Module], testInc: Iterable[File], val testOut: Boolean
-						) extends DCMake.Module {
+	            val name: String, val home: File,
+	            mainSrc: DynamicsFS, mainLib: Iterable[DCMake.Module], mainInc: Iterable[File], val mainOut: Boolean,
+	            testSrc: DynamicsFS, testLib: Iterable[DCMake.Module], testInc: Iterable[File], val testOut: Boolean
+            ) extends DCMake.Module {
 
 	val mainName: String =
 		name

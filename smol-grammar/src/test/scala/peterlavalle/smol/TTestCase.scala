@@ -65,20 +65,6 @@ trait TTestCase extends peterlavalle.ATestCase {
 		parser.module()
 	}
 
-	def testCompile(): Unit = {
-
-		val actual: SmolIr.Module =
-			Compiler(parser.module())
-
-		val expected: SmolIr.Module =
-			treeCode
-
-		sAssertEqual(
-			expected,
-			actual
-		)
-	}
-
 	private def parser =
 		new SmolIrParser(
 			new CommonTokenStream(
@@ -94,6 +80,20 @@ trait TTestCase extends peterlavalle.ATestCase {
 		fail(
 			s"in $getName; `$message` @ $line"
 		)
+
+	def testCompile(): Unit = {
+
+		val actual: SmolIr.Module =
+			Compiler(parser.module())
+
+		val expected: SmolIr.Module =
+			treeCode
+
+		sAssertEqual(
+			expected,
+			actual
+		)
+	}
 
 	def testHeader(): Unit = {
 

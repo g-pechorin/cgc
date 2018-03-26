@@ -83,6 +83,12 @@ class EnumTest extends TTestCase {
 			foo
 		)
 
+	def assertEmitEnumAssert(text: String, module: String, enum: SmolIr.EnumKind): Unit =
+		assertEquals(
+			text.trim,
+			Cpp.emitAssertEnumOrFlag(module, enum, getName).trim
+		)
+
 	def testEmitBarAssert(): Unit =
 		assertEmitEnumAssert(
 			"""
@@ -95,12 +101,6 @@ class EnumTest extends TTestCase {
 			""".stripMargin,
 			"gl43",
 			bar
-		)
-
-	def assertEmitEnumAssert(text: String, module: String, enum: SmolIr.EnumKind): Unit =
-		assertEquals(
-			text.trim,
-			Cpp.emitAssertEnumOrFlag(module, enum, getName).trim
 		)
 
 	override def expandedCalls =
